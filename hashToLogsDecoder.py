@@ -55,6 +55,22 @@ class Chain:
         abi = json.load(f)
         return abi
 
+    def addTokenInfo(self, ABI, address, log):
+        contract = self.w3.eth.contract(address=address, abi=ABI)
+        try:
+            tokenDecimals = contract.functions.decimals().call()
+            tokenName = contract.functions.name().call()
+            tokenSymbol = contract.functions.symbol().call()
+        except:
+            print("couldn't get info, setting to 18, NA")
+            tokenDecimals = 18
+            tokenName = "NA"
+            tokenSymbol = "NA"
+        # print(f"from addDecimals, log: ", log)
+        log[0]["decimals"] = tokenDecimals
+        log[0]["token name"] = tokenName
+        log[0]["token symbol"] = tokenSymbol
+
     def decodeLogsFromReceipt(self, receipt):
         decodedLogs = []
 
@@ -74,7 +90,7 @@ class Chain:
                     # WBTC on polygon network - load abi from local files
                     abi = self.getWbtcAbiList()
                     decodedLog = self.getDecodedLog(abi, log)
-
+            self.addTokenInfo(abi, contractAddress, decodedLog)
             decodedLogs.append(decodedLog)
 
         decodedList = []

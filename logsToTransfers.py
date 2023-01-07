@@ -18,9 +18,9 @@ def main():
     )
 
     deposits = getTokenDeposits(decodedLogs)
+    print(deposits)
     for deposit in deposits:
         pass
-    ## coingecko api to get token names and prices
 
 
 if __name__ == "__main__":
