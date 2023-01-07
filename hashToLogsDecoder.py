@@ -7,6 +7,11 @@ import eth_event
 import pandas as pd
 from dotenv import load_dotenv
 
+"""Main fucntion hashToLogsDecode takes a:
+    - chain name string (either "eth" or "polygon")
+    - transaction hash string
+and returns the decoded logs as a list of dictionaries """
+
 
 class Chain:
     def __init__(self, network):
@@ -31,15 +36,21 @@ class Chain:
             "polygon": f"https://api.polygonscan.com/api?module=contract&action=getabi&address={address}&apikey={self.explorerKey}",
         }
         abi_endpoint = endpoints[self.network]
-        abiString = (json.loads(requests.get(abi_endpoint).text))["result"]
+        responseString = requests.get(abi_endpoint).text
+        responseDict = json.loads(responseString)
+        abiString = (responseDict)["result"]
+        if responseDict["status"] == "0":
+            print(responseDict["result"])
+            print("trying with ERC20 ABI")
+            # try using ERC20
+            abiString = self.getERC20AbiString()
         return json.loads(abiString)
 
-    def getERC20ABI(self):
+    def getERC20AbiString(self):
         f = open("./ABIs/Erc20_abi.json")
-        abi = json.load(f)
-        return abi
+        return f.read()
 
-    def getWbtcAbi(self):
+    def getWbtcAbiList(self):
         f = open("./ABIs/WBTC_Proxy_abi.json")
         abi = json.load(f)
         return abi
@@ -61,7 +72,7 @@ class Chain:
                     == "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6"
                 ):
                     # WBTC on polygon network - load abi from local files
-                    abi = self.getWbtcAbi()
+                    abi = self.getWbtcAbiList()
                     decodedLog = self.getDecodedLog(abi, log)
 
             decodedLogs.append(decodedLog)
@@ -94,40 +105,21 @@ class Chain:
             return proxyAddress
 
 
-def main():
-    ch = Chain("polygon")
-    ch.isConnected()
-    txHash = "0xda05efaeace434d3f501c44e58949f197b770dfdfef3f3c6f7c6559e1bba0ea8"
+def hashToLogsDecode(chain, hash):
+    ch = Chain(chain)
+    txHash = hash
     receipt = ch.w3.eth.get_transaction_receipt(txHash)
     decodedTxs = ch.decodeLogsFromReceipt(receipt)
-    # decodedTxs = ch.decodeFirstLogFromReceipt(receipt)
-    print(decodedTxs)
-    info = []
-    for dictionary in decodedTxs:
-        if dictionary["name"] == "Transfer":
-            data = {
-                "Address": dictionary["address"],
-                "From": dictionary["data"][0]["value"],
-                "To": dictionary["data"][1]["value"],
-                "Value": dictionary["data"][2]["value"],
-            }
-            info.append(data)
-        elif dictionary["name"] == "Swap":
-            data = {
-                "Address": dictionary["address"],
-                "From": dictionary["data"][0]["value"],
-                "To": dictionary["data"][1]["value"],
-                "Amount0": dictionary["data"][2]["value"],
-                "Amount1": dictionary["data"][3]["value"],
-                "Price": dictionary["data"][4]["value"],
-            }
-            info.append(data)
+    return decodedTxs
 
-    df0 = pd.DataFrame(info)
-    # print(df0)
 
-    df1 = pd.DataFrame(decodedTxs)
-    # print(df1)
+def main():
+    print(
+        hashToLogsDecode(
+            "polygon",
+            "0xda05efaeace434d3f501c44e58949f197b770dfdfef3f3c6f7c6559e1bba0ea8",
+        )
+    )
 
 
 if __name__ == "__main__":
